@@ -18,6 +18,29 @@ curl -s "http://localhost:9200/_cat/indices?format=json&h=index,store.size,rep" 
     | [.index, .rep, .["store.size"]] 
     | @tsv'
 
+curl -s "http://localhost:9200/_cat/indices?format=json&h=index,store,store.size,storeSize,rep,ds" \
+| jq -r '
+  def to_gb($s):
+    if ($s == null) or ($s == "") then 0
+    else
+      ($s | ascii_downcase | capture("(?<n>[0-9.]+)\\s*(?<u>tb|gb|mb|kb|b)?")) as $m
+      | ($m.n | tonumber)
+        * (if $m.u == "tb" then 1024
+           elif $m.u == "gb" or $m.u == null then 1
+           elif $m.u == "mb" then 1/1024
+           elif $m.u == "kb" then 1/1024/1024
+           else 1 end)
+    end;
+  .[]
+  | .size = (.store // .storeSize // .["store.size"] // "")
+  | select( to_gb(.size) < 50 )
+  | [ .index,
+      (if (.ds // "-") == "-" then "none" else .ds end),
+      (.rep // "-"),
+      .size ]
+  | @tsv
+'
+
 Explanation
 
 curl -s .../_cat/indices?format=json&h=index,store.size,rep,ds → gets index metadata in JSON.
