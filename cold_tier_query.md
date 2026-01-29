@@ -12,6 +12,12 @@ curl -s "http://localhost:9200/_cat/indices?format=json&h=index,store,rep,ds" \
     | [.index, (if .ds == "-" then "none" else .ds end), .rep, .store] 
     | @tsv'
 
+curl -s "http://localhost:9200/_cat/indices?format=json&h=index,store.size,rep" \
+| jq -r '.[] 
+    | select(.["store.size"] | test("gb") and ((.["store.size"] | sub("gb$";"") | tonumber) < 50)) 
+    | [.index, .rep, .["store.size"]] 
+    | @tsv'
+
 Explanation
 
 curl -s .../_cat/indices?format=json&h=index,store.size,rep,ds → gets index metadata in JSON.
